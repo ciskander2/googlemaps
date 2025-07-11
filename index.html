@@ -15,17 +15,12 @@
   <body>
     <div id="map"></div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
     <script>
-      function getQueryParam(param) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(param);
-      }
-
       function initMap() {
-        const originInput = getQueryParam('origin') || "New York, NY";
-        const destinationInput = getQueryParam('destination') || "Boston, MA";
-        const modeInput = getQueryParam('mode') || "driving"; // NEW: read mode parameter
+        const originInput = "dxb";
+        const destinationInput = "newark";
+        const modeInput = "both";
 
         const map = new google.maps.Map(document.getElementById("map"), {
           zoom: 4,
