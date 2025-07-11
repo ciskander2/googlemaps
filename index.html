@@ -15,12 +15,29 @@
   <body>
     <div id="map"></div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
     <script>
+      function getQueryParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+      }
+
+      function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Radius of Earth in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+        return distance;
+      }
+
       function initMap() {
-        const originInput = "dxb";
-        const destinationInput = "newark";
-        const modeInput = "both";
+        const originInput = getQueryParam('origin') || "New York, NY";
+        const destinationInput = getQueryParam('destination') || "Boston, MA";
 
         const map = new google.maps.Map(document.getElementById("map"), {
           zoom: 4,
@@ -33,25 +50,7 @@
 
         const geocoder = new google.maps.Geocoder();
 
-        // === DRIVING ROUTE ===
-        if (modeInput === "driving" || modeInput === "both") {
-          directionsService.route(
-            {
-              origin: originInput,
-              destination: destinationInput,
-              travelMode: "DRIVING",
-            },
-            (result, status) => {
-              if (status === "OK") {
-                directionsRenderer.setDirections(result);
-              } else {
-                alert("Driving directions failed due to " + status);
-              }
-            }
-          );
-        }
-
-        // === PLANE AND SEA ROUTES ===
+        // === Geocode both origin and destination ===
         geocoder.geocode({ address: originInput }, (originResults, originStatus) => {
           if (originStatus === "OK") {
             geocoder.geocode({ address: destinationInput }, (destResults, destStatus) => {
@@ -59,8 +58,31 @@
                 const originCoords = originResults[0].geometry.location;
                 const destCoords = destResults[0].geometry.location;
 
-                // === PLANE ROUTE ===
-                if (modeInput === "plane" || modeInput === "both") {
+                // === Calculate distance ===
+                const distance = calculateDistance(
+                  originCoords.lat(), originCoords.lng(),
+                  destCoords.lat(), destCoords.lng()
+                );
+
+                // === Smart decision logic ===
+                if (distance < 1500) {
+                  // DRIVING ROUTE
+                  directionsService.route(
+                    {
+                      origin: originInput,
+                      destination: destinationInput,
+                      travelMode: "DRIVING",
+                    },
+                    (result, status) => {
+                      if (status === "OK") {
+                        directionsRenderer.setDirections(result);
+                      } else {
+                        alert("Driving directions failed due to " + status);
+                      }
+                    }
+                  );
+                } else {
+                  // PLANE ROUTE
                   const planePath = new google.maps.Polyline({
                     path: [
                       { lat: originCoords.lat(), lng: originCoords.lng() },
@@ -72,10 +94,8 @@
                     strokeWeight: 2
                   });
                   planePath.setMap(map);
-                }
 
-                // === SEA ROUTE ===
-                if (modeInput === "sea" || modeInput === "both") {
+                  // SEA ROUTE
                   const seaPath = new google.maps.Polyline({
                     path: [
                       { lat: originCoords.lat(), lng: originCoords.lng() },
