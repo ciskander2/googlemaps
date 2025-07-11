@@ -15,7 +15,7 @@
   <body>
     <div id="map"></div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
     <script>
       function getQueryParam(param) {
         const urlParams = new URLSearchParams(window.location.search);
@@ -36,6 +36,8 @@
         const directionsRenderer = new google.maps.DirectionsRenderer();
         directionsRenderer.setMap(map);
 
+        const geocoder = new google.maps.Geocoder();
+
         // === DRIVING ROUTE ===
         if (modeInput === "driving" || modeInput === "both") {
           directionsService.route(
@@ -54,35 +56,52 @@
           );
         }
 
-        // === PLANE ROUTE ===
-        if (modeInput === "plane" || modeInput === "both") {
-          const planePath = new google.maps.Polyline({
-            path: [
-              { lat: 48.8566, lng: 2.3522 }, // Example: Paris
-              { lat: 40.7128, lng: -74.0060 } // Example: New York
-            ],
-            geodesic: true,
-            strokeColor: "#FF0000",
-            strokeOpacity: 1.0,
-            strokeWeight: 2
-          });
-          planePath.setMap(map);
-        }
+        // === PLANE AND SEA ROUTES ===
+        geocoder.geocode({ address: originInput }, (originResults, originStatus) => {
+          if (originStatus === "OK") {
+            geocoder.geocode({ address: destinationInput }, (destResults, destStatus) => {
+              if (destStatus === "OK") {
+                const originCoords = originResults[0].geometry.location;
+                const destCoords = destResults[0].geometry.location;
 
-        // === SEA ROUTE ===
-        if (modeInput === "sea" || modeInput === "both") {
-          const seaPath = new google.maps.Polyline({
-            path: [
-              { lat: 51.5074, lng: -0.1278 }, // Example: London
-              { lat: 40.7128, lng: -74.0060 } // Example: New York
-            ],
-            geodesic: true,
-            strokeColor: "#0000FF",
-            strokeOpacity: 1.0,
-            strokeWeight: 2
-          });
-          seaPath.setMap(map);
-        }
+                // === PLANE ROUTE ===
+                if (modeInput === "plane" || modeInput === "both") {
+                  const planePath = new google.maps.Polyline({
+                    path: [
+                      { lat: originCoords.lat(), lng: originCoords.lng() },
+                      { lat: destCoords.lat(), lng: destCoords.lng() }
+                    ],
+                    geodesic: true,
+                    strokeColor: "#FF0000",
+                    strokeOpacity: 1.0,
+                    strokeWeight: 2
+                  });
+                  planePath.setMap(map);
+                }
+
+                // === SEA ROUTE ===
+                if (modeInput === "sea" || modeInput === "both") {
+                  const seaPath = new google.maps.Polyline({
+                    path: [
+                      { lat: originCoords.lat(), lng: originCoords.lng() },
+                      { lat: destCoords.lat(), lng: destCoords.lng() }
+                    ],
+                    geodesic: true,
+                    strokeColor: "#0000FF",
+                    strokeOpacity: 1.0,
+                    strokeWeight: 2
+                  });
+                  seaPath.setMap(map);
+                }
+
+              } else {
+                alert("Destination geocoding failed: " + destStatus);
+              }
+            });
+          } else {
+            alert("Origin geocoding failed: " + originStatus);
+          }
+        });
       }
 
       window.onload = initMap;
