@@ -25,9 +25,10 @@
       function initMap() {
         const originInput = getQueryParam('origin') || "New York, NY";
         const destinationInput = getQueryParam('destination') || "Boston, MA";
+        const modeInput = getQueryParam('mode') || "driving"; // NEW: read mode parameter
 
         const map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 6,
+          zoom: 4,
           center: { lat: 39.8283, lng: -98.5795 }, // Center USA
         });
 
@@ -35,20 +36,53 @@
         const directionsRenderer = new google.maps.DirectionsRenderer();
         directionsRenderer.setMap(map);
 
-        directionsService.route(
-          {
-            origin: originInput,
-            destination: destinationInput,
-            travelMode: "DRIVING",
-          },
-          (result, status) => {
-            if (status === "OK") {
-              directionsRenderer.setDirections(result);
-            } else {
-              alert("Directions request failed due to " + status);
+        // === DRIVING ROUTE ===
+        if (modeInput === "driving" || modeInput === "both") {
+          directionsService.route(
+            {
+              origin: originInput,
+              destination: destinationInput,
+              travelMode: "DRIVING",
+            },
+            (result, status) => {
+              if (status === "OK") {
+                directionsRenderer.setDirections(result);
+              } else {
+                alert("Driving directions failed due to " + status);
+              }
             }
-          }
-        );
+          );
+        }
+
+        // === PLANE ROUTE ===
+        if (modeInput === "plane" || modeInput === "both") {
+          const planePath = new google.maps.Polyline({
+            path: [
+              { lat: 48.8566, lng: 2.3522 }, // Example: Paris
+              { lat: 40.7128, lng: -74.0060 } // Example: New York
+            ],
+            geodesic: true,
+            strokeColor: "#FF0000",
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+          });
+          planePath.setMap(map);
+        }
+
+        // === SEA ROUTE ===
+        if (modeInput === "sea" || modeInput === "both") {
+          const seaPath = new google.maps.Polyline({
+            path: [
+              { lat: 51.5074, lng: -0.1278 }, // Example: London
+              { lat: 40.7128, lng: -74.0060 } // Example: New York
+            ],
+            geodesic: true,
+            strokeColor: "#0000FF",
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+          });
+          seaPath.setMap(map);
+        }
       }
 
       window.onload = initMap;
