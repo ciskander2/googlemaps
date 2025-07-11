@@ -1,125 +1,99 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Dynamic Route Map</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="initial-scale=1.0, width=device-width" />
-    <style>
-      #map {
-        height: 100vh;
-        width: 100%;
-      }
-    </style>
-  </head>
+function initMap() {
+  const originInput = getQueryParam('origin') || "New York, NY";
+  const destinationInput = getQueryParam('destination') || "Boston, MA";
 
-  <body>
-    <div id="map"></div>
+  const map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 4,
+    center: { lat: 39.8283, lng: -98.5795 },
+  });
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
-    <script>
-      function getQueryParam(param) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(param);
-      }
+  const directionsService = new google.maps.DirectionsService();
+  const directionsRenderer = new google.maps.DirectionsRenderer();
+  directionsRenderer.setMap(map);
 
-      function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Radius of Earth in km
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-          Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distance = R * c;
-        return distance;
-      }
+  const geocoder = new google.maps.Geocoder();
 
-      function initMap() {
-        const originInput = getQueryParam('origin') || "New York, NY";
-        const destinationInput = getQueryParam('destination') || "Boston, MA";
+  // === Calculate distance helper ===
+  function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
 
-        const map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 4,
-          center: { lat: 39.8283, lng: -98.5795 }, // Center USA
-        });
+  // === Geocode origin first ===
+  geocoder.geocode({ address: originInput }, (originResults, originStatus) => {
+    if (originStatus === "OK") {
+      geocoder.geocode({ address: destinationInput }, (destResults, destStatus) => {
+        if (destStatus === "OK") {
+          const originCoords = originResults[0].geometry.location;
+          const destCoords = destResults[0].geometry.location;
 
-        const directionsService = new google.maps.DirectionsService();
-        const directionsRenderer = new google.maps.DirectionsRenderer();
-        directionsRenderer.setMap(map);
+          // === Calculate distance ===
+          const distance = calculateDistance(
+            originCoords.lat(), originCoords.lng(),
+            destCoords.lat(), destCoords.lng()
+          );
 
-        const geocoder = new google.maps.Geocoder();
+          // === Debug distance ===
+          console.log("Calculated distance (km):", distance);
 
-        // === Geocode both origin and destination ===
-        geocoder.geocode({ address: originInput }, (originResults, originStatus) => {
-          if (originStatus === "OK") {
-            geocoder.geocode({ address: destinationInput }, (destResults, destStatus) => {
-              if (destStatus === "OK") {
-                const originCoords = originResults[0].geometry.location;
-                const destCoords = destResults[0].geometry.location;
-
-                // === Calculate distance ===
-                const distance = calculateDistance(
-                  originCoords.lat(), originCoords.lng(),
-                  destCoords.lat(), destCoords.lng()
-                );
-
-                // === Smart decision logic ===
-                if (distance < 1500) {
-                  // DRIVING ROUTE
-                  directionsService.route(
-                    {
-                      origin: originInput,
-                      destination: destinationInput,
-                      travelMode: "DRIVING",
-                    },
-                    (result, status) => {
-                      if (status === "OK") {
-                        directionsRenderer.setDirections(result);
-                      } else {
-                        alert("Driving directions failed due to " + status);
-                      }
-                    }
-                  );
+          // === Smart logic ===
+          if (distance < 1500) {
+            // DRIVING ROUTE
+            directionsService.route(
+              {
+                origin: originInput,
+                destination: destinationInput,
+                travelMode: "DRIVING",
+              },
+              (result, status) => {
+                if (status === "OK") {
+                  directionsRenderer.setDirections(result);
                 } else {
-                  // PLANE ROUTE
-                  const planePath = new google.maps.Polyline({
-                    path: [
-                      { lat: originCoords.lat(), lng: originCoords.lng() },
-                      { lat: destCoords.lat(), lng: destCoords.lng() }
-                    ],
-                    geodesic: true,
-                    strokeColor: "#FF0000",
-                    strokeOpacity: 1.0,
-                    strokeWeight: 2
-                  });
-                  planePath.setMap(map);
-
-                  // SEA ROUTE
-                  const seaPath = new google.maps.Polyline({
-                    path: [
-                      { lat: originCoords.lat(), lng: originCoords.lng() },
-                      { lat: destCoords.lat(), lng: destCoords.lng() }
-                    ],
-                    geodesic: true,
-                    strokeColor: "#0000FF",
-                    strokeOpacity: 1.0,
-                    strokeWeight: 2
-                  });
-                  seaPath.setMap(map);
+                  alert("Driving directions failed: " + status);
                 }
-
-              } else {
-                alert("Destination geocoding failed: " + destStatus);
               }
-            });
+            );
           } else {
-            alert("Origin geocoding failed: " + originStatus);
-          }
-        });
-      }
+            // PLANE ROUTE
+            const planePath = new google.maps.Polyline({
+              path: [
+                { lat: originCoords.lat(), lng: originCoords.lng() },
+                { lat: destCoords.lat(), lng: destCoords.lng() }
+              ],
+              geodesic: true,
+              strokeColor: "#FF0000",
+              strokeOpacity: 1.0,
+              strokeWeight: 2
+            });
+            planePath.setMap(map);
 
-      window.onload = initMap;
-    </script>
-  </body>
-</html>
+            // SEA ROUTE
+            const seaPath = new google.maps.Polyline({
+              path: [
+                { lat: originCoords.lat(), lng: originCoords.lng() },
+                { lat: destCoords.lat(), lng: destCoords.lng() }
+              ],
+              geodesic: true,
+              strokeColor: "#0000FF",
+              strokeOpacity: 1.0,
+              strokeWeight: 2
+            });
+            seaPath.setMap(map);
+          }
+
+        } else {
+          alert("Destination geocoding failed: " + destStatus);
+        }
+      });
+    } else {
+      alert("Origin geocoding failed: " + originStatus);
+    }
+  });
+}
