@@ -10,7 +10,7 @@
     .controls input { width: 200px; margin-right: 6px; }
     .controls button { margin-right: 6px; }
     table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #888; padding: 6px; text-align: center; }
+    th, td { border: 1px solid #888; padding: 6px; text-align: center; white-space: nowrap; }
     th { background: #f0f0f0; }
     .legend span { margin-right: 15px; }
   </style>
@@ -127,7 +127,8 @@
             });
           }));
         }, Promise.resolve()).then(() => {
-          summary.innerHTML = `<h3>Route Summary</h3><table><tr><th>From</th><th>To</th><th>Mode</th><th>Dist (km)</th><th>Time (hr)</th><th>CO₂ (kg)</th></tr>`;
+          summary.innerHTML = `<h3>Route Summary</h3><table>
+          <tr><th>From</th><th>To</th><th>Mode</th><th>Dist (km)</th><th>Time (hr)</th><th>CO₂ (kg)</th></tr>`;
 
           coords.forEach((start, i) => {
             const end = coords[i+1];
@@ -161,8 +162,20 @@
                 const sp = EMISSION[seg.m].speed;
                 const tm = (md/sp).toFixed(2);
                 const co = (md*EMISSION[seg.m].factor).toFixed(1);
-                summary.innerHTML += `<tr><td>${seg.a.lat.toFixed(3)},${seg.a.lng.toFixed(3)}</td><td>${seg.b.lat.toFixed(3)},${seg.b.lng.toFixed(3)}</td><td>${seg.m} (Option ${routeIdx + 1})</td><td>${md.toFixed(1)}</td><td>${tm}</td><td>${co}</td></tr>`;
+                const fromStr = `${seg.a.lat.toFixed(3)}, ${seg.a.lng.toFixed(3)}`;
+                const toStr = `${seg.b.lat.toFixed(3)}, ${seg.b.lng.toFixed(3)}`;
+                const modeStr = `${seg.m} (Option ${routeIdx + 1})`;
 
+                summary.innerHTML += `
+                  <tr>
+                    <td>${fromStr}</td>
+                    <td>${toStr}</td>
+                    <td>${modeStr}</td>
+                    <td>${md.toFixed(1)}</td>
+                    <td>${tm}</td>
+                    <td>${co}</td>
+                  </tr>`;
+                
                 const color = seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
                 if (seg.m === "Driving") {
                   routeDriving(seg.a, seg.b, color);
