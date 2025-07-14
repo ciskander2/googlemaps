@@ -25,32 +25,28 @@
   </div>
   <div class="legend">
     <strong>Legend:</strong>
-    <span style="color: #FF0000;">Plane</span> | 
-    <span style="color: #0000FF;">Sea</span> | 
-    <span style="color: #008000;">Drive</span>
+    <span style="color: #FF0000;">Plane</span> |
+    <span style="color: #0000FF;">Sea</span> |
+    <span style="color: #008000;">Drive</span> |
+    <span style="color: gold;">Greenest</span>
   </div>
   <div id="map"></div>
   <div id="summary"></div>
 
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
   <script>
     const PORTS = [
-      { name: "Port of Le Havre, FR", lat: 49.4949, lng: 0.1079 },
-      { name: "Port of Rotterdam, NL", lat: 51.9456, lng: 4.1221 },
-      { name: "Port of Antwerp, BE", lat: 51.2600, lng: 4.3550 },
-      { name: "Port of Hamburg, DE", lat: 53.5461, lng: 9.9661 },
-      { name: "Port of Los Angeles, USA", lat: 33.7361, lng: -118.2519 },
-      { name: "Port of Long Beach, USA", lat: 33.7542, lng: -118.2167 },
-      { name: "Port of New York, USA", lat: 40.7128, lng: -74.0060 },
-      { name: "Port of Savannah, USA", lat: 32.0835, lng: -81.0998 },
-      { name: "Port of Houston, USA", lat: 29.7360, lng: -95.2589 },
-      { name: "Port of Shanghai, CN", lat: 31.2304, lng: 121.4737 },
-      { name: "Port of Singapore, SG", lat: 1.2644, lng: 103.8200 }
+      { name: "Port of Le Havre", lat: 49.4949, lng: 0.1079 },
+      { name: "Port of New York", lat: 40.7128, lng: -74.0060 },
+      { name: "Port of Houston", lat: 29.7360, lng: -95.2589 },
+      { name: "Port of Los Angeles", lat: 33.7361, lng: -118.2519 },
+      { name: "Port of Rotterdam", lat: 51.9456, lng: 4.1221 },
+      { name: "Port of Singapore", lat: 1.2644, lng: 103.8200 }
     ];
 
     const EMISSION = {
       Plane: { speed: 800, factor: 0.897 },
-      Sea:   { speed: 35,  factor: 0.025 },
+      Sea: { speed: 35, factor: 0.025 },
       Driving: { speed: 80, factor: 0.432 }
     };
 
@@ -94,18 +90,18 @@
         summary.innerHTML = "";
       }
 
-      function renderSegment(pathCoords, color) {
+      function renderSegment(pathCoords, color, weight = 3) {
         const line = new google.maps.Polyline({
           path: pathCoords, geodesic: true, strokeColor: color,
-          strokeOpacity: 1.0, strokeWeight: 3
+          strokeOpacity: 1.0, strokeWeight: weight
         });
         line.setMap(map);
         mapRenderers.push(line);
       }
 
-      function routeDriving(a, b, col) {
+      function routeDriving(a, b, col, weight = 3) {
         const renderer = new google.maps.DirectionsRenderer({
-          suppressMarkers: true, polylineOptions: { strokeColor: col }
+          suppressMarkers: true, polylineOptions: { strokeColor: col, strokeWeight: weight }
         });
         renderer.setMap(map);
         directionsService.route({
@@ -116,7 +112,7 @@
         mapRenderers.push(renderer);
       }
 
-      function processRoute() {
+      async function processRoute() {
         clearRoutes();
         const pts = [
           document.getElementById("origin").value,
@@ -126,88 +122,99 @@
         const geo = new google.maps.Geocoder();
         let coords = [], places = [];
 
-        pts.reduce((p, loc) => {
-          return p.then(() => new Promise((resolve, reject) => {
+        for (const loc of pts) {
+          const result = await new Promise((resolve, reject) => {
             geo.geocode({ address: loc }, (res, st) => {
-              if (st === "OK") {
-                coords.push(res[0].geometry.location.toJSON());
-                places.push(res[0].formatted_address);
-                resolve();
-              } else {
-                alert(`Failed geocode: ${loc}`); reject();
-              }
+              if (st === "OK") resolve(res[0]);
+              else reject(`Failed to geocode: ${loc}`);
             });
-          }));
-        }, Promise.resolve()).then(async () => {
-          summary.innerHTML = `
-            <h3>Route Summary</h3>
-            <table>
-              <thead><tr>
-                <th>From</th><th>To</th><th>Mode</th><th>Dist (km)</th><th>Time (hr)</th><th>CO₂ (kg)</th>
-              </tr></thead><tbody>`;
+          });
+          coords.push(result.geometry.location.toJSON());
+          places.push(result.formatted_address);
+        }
 
-          for (let i = 0; i < coords.length - 1; i++) {
-            const start = coords[i];
-            const end = coords[i + 1];
-            const fromCity = places[i];
-            const toCity = places[i + 1];
-            const d = calculateDistance(start.lat, start.lng, end.lat, end.lng);
-            const continentStart = detectContinent(start.lat, start.lng);
-            const continentEnd = detectContinent(end.lat, end.lng);
-            let routeVariants = [];
+        summary.innerHTML = `
+          <h3>Route Summary</h3>
+          <table>
+            <thead><tr>
+              <th style="min-width: 150px;">From</th>
+              <th style="min-width: 150px;">To</th>
+              <th style="min-width: 140px;">Mode</th>
+              <th style="min-width: 90px;">Dist (km)</th>
+              <th style="min-width: 90px;">CO₂ (kg)</th>
+            </tr></thead><tbody>`;
 
-            const portA = findNearestPort(start);
-            const portB = findNearestPort(end);
+        let bestCO2 = Infinity;
+        let bestSegments = [];
 
-            if (d > 3000 && continentStart !== continentEnd) {
-              const driveToPort = calculateDistance(start.lat, start.lng, portA.lat, portA.lng);
-              const driveFromPort = calculateDistance(end.lat, end.lng, portB.lat, portB.lng);
+        for (let i = 0; i < coords.length - 1; i++) {
+          const start = coords[i];
+          const end = coords[i + 1];
+          const fromCity = places[i];
+          const toCity = places[i + 1];
+          const d = calculateDistance(start.lat, start.lng, end.lat, end.lng);
+          const continentStart = detectContinent(start.lat, start.lng);
+          const continentEnd = detectContinent(end.lat, end.lng);
+          let routeVariants = [];
 
-              const segments = [];
-              if (driveToPort > 20) segments.push({ m: "Driving", a: start, b: portA });
-              segments.push({ m: "Sea", a: portA, b: portB });
-              if (driveFromPort > 20) segments.push({ m: "Driving", a: portB, b: end });
+          const portA = findNearestPort(start);
+          const portB = findNearestPort(end);
 
-              routeVariants.push(segments);
-            }
+          if (d > 3000 && continentStart !== continentEnd) {
+            const driveToPort = calculateDistance(start.lat, start.lng, portA.lat, portA.lng);
+            const driveFromPort = calculateDistance(end.lat, end.lng, portB.lat, portB.lng);
+            const segments = [];
+            if (driveToPort > 20) segments.push({ m: "Driving", a: start, b: portA });
+            segments.push({ m: "Sea", a: portA, b: portB });
+            if (driveFromPort > 20) segments.push({ m: "Driving", a: portB, b: end });
+            routeVariants.push(segments);
+          }
 
-            // Always add plane-only and drive-only as additional options
-            routeVariants.push([{ m: "Plane", a: start, b: end }]);
-            routeVariants.push([{ m: "Driving", a: start, b: end }]);
+          routeVariants.push([{ m: "Plane", a: start, b: end }]);
+          routeVariants.push([{ m: "Driving", a: start, b: end }]);
 
-            for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
-              for (let seg of routeVariants[optionIdx]) {
-                const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
-                const sp = EMISSION[seg.m].speed;
-                const tm = (md / sp).toFixed(2);
-                const co = (md * EMISSION[seg.m].factor).toFixed(1);
-                summary.innerHTML += `
-                  <tr>
-                    <td>${fromCity}</td>
-                    <td>${toCity}</td>
-                    <td>${seg.m} (Option ${optionIdx + 1})</td>
-                    <td>${md.toFixed(1)}</td>
-                    <td>${tm}</td>
-                    <td>${co}</td>
-                  </tr>`;
+          for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
+            const option = routeVariants[optionIdx];
+            let totalCO2 = 0;
 
-                const color = seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
-                if (seg.m === "Driving") {
-                  routeDriving(seg.a, seg.b, color);
-                } else {
-                  renderSegment([seg.a, seg.b], color);
-                }
-              }
+            option.forEach(seg => {
+              const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
+              totalCO2 += md * EMISSION[seg.m].factor;
+            });
+
+            if (totalCO2 < bestCO2) {
+              bestCO2 = totalCO2;
+              bestSegments = option;
             }
           }
 
-          summary.innerHTML += "</tbody></table>";
-        });
+          routeVariants.forEach((option, optionIdx) => {
+            const isBest = option === bestSegments;
+            option.forEach(seg => {
+              const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
+              const co = (md * EMISSION[seg.m].factor).toFixed(1);
+              summary.innerHTML += `
+                <tr>
+                  <td>${fromCity}</td>
+                  <td>${toCity}</td>
+                  <td>${seg.m} (Option ${optionIdx + 1}) ${isBest ? "⭐" : ""}</td>
+                  <td>${md.toFixed(1)}</td>
+                  <td>${co}</td>
+                </tr>`;
+              const color = isBest ? "gold" : seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
+              const weight = isBest ? 5 : 3;
+              if (seg.m === "Driving") routeDriving(seg.a, seg.b, color, weight);
+              else renderSegment([seg.a, seg.b], color, weight);
+            });
+          });
+        }
+
+        summary.innerHTML += "</tbody></table>";
       }
 
       document.getElementById("add-stop").addEventListener("click", () => {
         const div = document.createElement("div");
-        div.innerHTML = `<input class="waypoint" placeholder="Waypoint"/> <button onclick="this.parentNode.remove()">✕</button>`;
+        div.innerHTML = `<input class="waypoint" placeholder="Waypoint"/> <button onclick="this.parentNode.remove()">\u2715</button>`;
         document.getElementById("waypoints").appendChild(div);
       });
       document.getElementById("go").addEventListener("click", processRoute);
