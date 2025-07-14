@@ -203,8 +203,8 @@
           for (let i = 0; i < coords.length - 1; i++) {
             const start = coords[i];
             const end = coords[i + 1];
-            const fromCity = places[i];
-            const toCity = places[i + 1];
+            const fromCity = places[i].split(",")[0].trim();
+            const toCity = places[i + 1].split(",")[0].trim();
             const d = calculateDistance(start.lat, start.lng, end.lat, end.lng);
             const continentStart = detectContinent(start.lat, start.lng);
             const continentEnd = detectContinent(end.lat, end.lng);
