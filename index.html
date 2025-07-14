@@ -34,12 +34,50 @@
 
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
   <script>
-    const PORTS = [
-      { name: "Port of Le Havre", lat: 49.4949, lng: 0.1079 },
-      { name: "Port of New York", lat: 40.7128, lng: -74.0060 },
-      { name: "Port of Houston", lat: 29.7560, lng: -95.3678 },
-      { name: "Port of Los Angeles", lat: 33.7361, lng: -118.2519 }
-    ];
+   const PORTS = [
+  // North America
+  { name: "Port of Los Angeles, USA", country: "US", lat: 33.7361, lng: -118.2519 },
+  { name: "Port of Long Beach, USA", country: "US", lat: 33.7542, lng: -118.2167 },
+  { name: "Port of New York & New Jersey, USA", country: "US", lat: 40.6681, lng: -74.0451 },
+  { name: "Port of Savannah, USA", country: "US", lat: 32.0835, lng: -81.0998 },
+  { name: "Port of Houston, USA", country: "US", lat: 29.7360, lng: -95.2589 },
+
+  // Europe
+  { name: "Port of Rotterdam, NL", country: "NL", lat: 51.9456, lng: 4.1221 },
+  { name: "Port of Antwerp, BE", country: "BE", lat: 51.2600, lng: 4.3550 },
+  { name: "Port of Hamburg, DE", country: "DE", lat: 53.5461, lng: 9.9661 },
+  { name: "Port of Bremerhaven, DE", country: "DE", lat: 53.5478, lng: 8.5834 },
+  { name: "Port of Le Havre, FR", country: "FR", lat: 49.4949, lng: 0.1079 },
+
+  // Asia
+  { name: "Port of Shanghai, CN", country: "CN", lat: 31.2304, lng: 121.4737 },
+  { name: "Port of Shenzhen, CN", country: "CN", lat: 22.5429, lng: 114.0527 },
+  { name: "Port of Ningbo–Zhoushan, CN", country: "CN", lat: 29.8683, lng: 121.5440 },
+  { name: "Port of Singapore, SG", country: "SG", lat: 1.2644, lng: 103.8200 },
+  { name: "Port of Busan, KR", country: "KR", lat: 35.1010, lng: 129.0402 },
+
+  // Middle East
+  { name: "Port of Dubai (Jebel Ali), AE", country: "AE", lat: 25.0657, lng: 55.1420 },
+
+  // Oceania
+  { name: "Port of Melbourne, AU", country: "AU", lat: -37.8120, lng: 144.9629 },
+  { name: "Port of Sydney, AU", country: "AU", lat: -33.8584, lng: 151.2043 },
+
+  // South America
+  { name: "Port of Santos, BR", country: "BR", lat: -23.9678, lng: -46.3336 },
+  { name: "Port of Buenos Aires, AR", country: "AR", lat: -34.6060, lng: -58.3500 },
+
+  // Africa
+  { name: "Port of Durban, ZA", country: "ZA", lat: -29.8683, lng: 31.0218 },
+  { name: "Port of Lagos (Apapa), NG", country: "NG", lat: 6.4531, lng: 3.3877 },
+
+  // Additional global
+  { name: "Port of Antwerp (Zeebrugge), BE", country: "BE", lat: 51.3230, lng: 3.1810 },
+  { name: "Port of Piraeus, GR", country: "GR", lat: 37.9420, lng: 23.6384 },
+  { name: "Port of Klang, MY", country: "MY", lat: 3.0039, lng: 101.4073 },
+  { name: "Port of Tanjung Pelepas, MY", country: "MY", lat: 1.3633, lng: 103.5875 }
+  // → Add more ports as needed
+];
 
     const EMISSION = {
       Plane: { speed: 800, factor: 0.897 },
