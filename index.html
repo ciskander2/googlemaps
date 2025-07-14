@@ -5,7 +5,11 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="initial-scale=1.0, width=device-width"/>
   <style>
-    #map { height: 60vh; width: 100%; margin-bottom: 10px; }
+    #map {
+      height: 60vh;
+      width: 100%;
+      margin-bottom: 10px;
+    }
 
     .controls {
       margin-bottom: 10px;
@@ -30,11 +34,16 @@
       padding: 6px;
       text-align: center;
       word-break: break-word;
-      white-space: normal;
+      vertical-align: middle;
     }
 
     th {
       background: #f0f0f0;
+    }
+
+    td {
+      max-width: 250px;
+      white-space: normal;
     }
 
     .legend {
@@ -95,23 +104,28 @@
 
     const EMISSION = {
       Plane: { speed: 800, factor: 0.897 },
-      Sea:   { speed: 35,  factor: 0.025 },
+      Sea: { speed: 35, factor: 0.025 },
       Driving: { speed: 80, factor: 0.432 }
     };
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
       const R = 6371;
-      const dLat = (lat2-lat1)*Math.PI/180;
-      const dLon = (lon2-lon1)*Math.PI/180;
-      const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     function findNearestPort(coord) {
       let nearest = PORTS[0], best = Infinity;
       PORTS.forEach(p => {
         const d = calculateDistance(coord.lat, coord.lng, p.lat, p.lng);
-        if (d < best) { best = d; nearest = p; }
+        if (d < best) {
+          best = d;
+          nearest = p;
+        }
       });
       return nearest;
     }
@@ -251,11 +265,13 @@
                 }
               });
 
+              const highlight = optionIdx === minIdx ? " style='background-color:#fff8dc;'" : "";
+
               summary.innerHTML += `
-                <tr${optionIdx === minIdx ? " style='background-color:#fff8dc;'" : ""}>
+                <tr${highlight}>
                   <td>${fromCity}</td>
                   <td>${toCity}</td>
-                  <td>${modeStr} (Option ${optionIdx + 1})${optionIdx === minIdx ? " ★" : ""}</td>
+                  <td style="white-space: normal;">${modeStr} (Option ${optionIdx + 1})${optionIdx === minIdx ? " ★" : ""}</td>
                   <td>${distPerRoute[optionIdx].toFixed(1)}</td>
                   <td>${co2PerRoute[optionIdx].toFixed(1)}</td>
                 </tr>
