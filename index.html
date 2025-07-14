@@ -6,13 +6,13 @@
   <meta name="viewport" content="initial-scale=1.0, width=device-width"/>
   <style>
     #map { height: 60vh; width: 100%; margin-bottom: 10px; }
-    .controls { margin-bottom: 15px; }
-    .controls input { width: 300px; margin-right: 8px; }
-    .controls button { margin-right: 8px; }
-    table { border-collapse: collapse; width: 150%; table-layout: fixed; }
-    th, td { border: 3px solid #888; padding: 8px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .controls { margin-bottom: 10px; }
+    .controls input { width: 200px; margin-right: 6px; }
+    .controls button { margin-right: 6px; }
+    table { border-collapse: collapse; width: 100%; table-layout: fixed; word-wrap: break-word; }
+    th, td { border: 1px solid #888; padding: 6px; text-align: center; vertical-align: top; }
     th { background: #f0f0f0; }
-    .legend span { margin-right: 20px; }
+    .legend span { margin-right: 15px; }
   </style>
 </head>
 <body>
@@ -32,8 +32,14 @@
   <div id="map"></div>
   <div id="summary"></div>
 
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
   <script>
+    const EMISSION = {
+      Plane: { speed: 800, factor: 0.897 },
+      Sea:   { speed: 35,  factor: 0.025 },
+      Driving: { speed: 80, factor: 0.432 }
+    };
+
     const PORTS = [
       { name: "Port of Le Havre, FR", lat: 49.4949, lng: 0.1079 },
       { name: "Port of Rotterdam, NL", lat: 51.9456, lng: 4.1221 },
@@ -48,12 +54,6 @@
       { name: "Port of Singapore, SG", lat: 1.2644, lng: 103.8200 }
     ];
 
-    const EMISSION = {
-      Plane: { speed: 800, factor: 0.897 },
-      Sea:   { speed: 35,  factor: 0.025 },
-      Driving: { speed: 80, factor: 0.432 }
-    };
-
     function calculateDistance(lat1, lon1, lat2, lon2) {
       const R = 6371;
       const dLat = (lat2-lat1)*Math.PI/180;
@@ -63,10 +63,12 @@
     }
 
     function findNearestPort(coord) {
-      return PORTS.reduce((nearest, p) => {
+      let nearest = PORTS[0], best = Infinity;
+      PORTS.forEach(p => {
         const d = calculateDistance(coord.lat, coord.lng, p.lat, p.lng);
-        return d < nearest.dist ? { port: p, dist: d } : nearest;
-      }, { port: PORTS[0], dist: Infinity }).port;
+        if (d < best) { best = d; nearest = p; }
+      });
+      return nearest;
     }
 
     function detectContinent(lat, lng) {
@@ -106,8 +108,11 @@
           suppressMarkers: true, polylineOptions: { strokeColor: col }
         });
         renderer.setMap(map);
-        directionsService.route({ origin: a, destination: b, travelMode: "DRIVING" },
-          (res, status) => { if (status === "OK") renderer.setDirections(res); });
+        directionsService.route({
+          origin: a, destination: b, travelMode: "DRIVING"
+        }, (res, status) => {
+          if (status === "OK") renderer.setDirections(res);
+        });
         mapRenderers.push(renderer);
       }
 
@@ -121,26 +126,35 @@
         const geo = new google.maps.Geocoder();
         let coords = [], places = [];
 
-        pts.reduce((p, loc) => p.then(() => new Promise((resolve, reject) => {
-          geo.geocode({ address: loc }, (res, st) => {
-            if (st === "OK") {
-              coords.push(res[0].geometry.location.toJSON());
-              places.push(res[0].formatted_address);
-              resolve();
-            } else {
-              alert(`Failed geocode: ${loc}`); reject();
-            }
-          });
-        })), Promise.resolve()).then(() => {
+        pts.reduce((p, loc) => {
+          return p.then(() => new Promise((resolve, reject) => {
+            geo.geocode({ address: loc }, (res, st) => {
+              if (st === "OK") {
+                coords.push(res[0].geometry.location.toJSON());
+                places.push(res[0].formatted_address.split(",")[0]);
+                resolve();
+              } else {
+                alert(`Failed geocode: ${loc}`); reject();
+              }
+            });
+          }));
+        }, Promise.resolve()).then(() => {
           summary.innerHTML = `
             <h3>Route Summary</h3>
-            <table><thead><tr>
-              <th>From</th><th>To</th><th>Mode</th><th>Dist (km)</th><th>CO₂ (kg)</th>
-            </tr></thead><tbody>`;
+            <table>
+              <thead><tr>
+                <th style="min-width: 150px;">From</th>
+                <th style="min-width: 150px;">To</th>
+                <th style="min-width: 140px;">Mode</th>
+                <th style="min-width: 90px;">Dist (km)</th>
+                <th style="min-width: 90px;">CO₂ (kg)</th>
+              </tr></thead><tbody>`;
 
           for (let i = 0; i < coords.length - 1; i++) {
-            const start = coords[i]; const end = coords[i + 1];
-            const fromCity = places[i]; const toCity = places[i + 1];
+            const start = coords[i];
+            const end = coords[i + 1];
+            const fromCity = places[i];
+            const toCity = places[i + 1];
             const d = calculateDistance(start.lat, start.lng, end.lat, end.lng);
             const continentStart = detectContinent(start.lat, start.lng);
             const continentEnd = detectContinent(end.lat, end.lng);
@@ -162,7 +176,17 @@
             routeVariants.push([{ m: "Plane", a: start, b: end }]);
             routeVariants.push([{ m: "Driving", a: start, b: end }]);
 
-            let co2PerRoute = routeVariants.map(route => route.reduce((acc, seg) => acc + calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng) * EMISSION[seg.m].factor, 0));
+            let co2PerRoute = [];
+            for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
+              let totalCO2 = 0;
+              for (let seg of routeVariants[optionIdx]) {
+                const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
+                const co = md * EMISSION[seg.m].factor;
+                totalCO2 += co;
+              }
+              co2PerRoute.push(totalCO2);
+            }
+
             const minIdx = co2PerRoute.indexOf(Math.min(...co2PerRoute));
 
             for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
@@ -170,14 +194,18 @@
                 const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
                 const co = (md * EMISSION[seg.m].factor).toFixed(1);
                 const color = seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
-                if (seg.m === "Driving") routeDriving(seg.a, seg.b, color);
-                else renderSegment([seg.a, seg.b], color);
-
+                if (seg.m === "Driving") {
+                  routeDriving(seg.a, seg.b, color);
+                } else {
+                  renderSegment([seg.a, seg.b], color);
+                }
                 summary.innerHTML += `
                   <tr${optionIdx === minIdx ? " style='background-color:#fff8dc;'" : ""}>
-                    <td>${fromCity}</td><td>${toCity}</td>
+                    <td>${fromCity}</td>
+                    <td>${toCity}</td>
                     <td>${seg.m} (Option ${optionIdx + 1})${optionIdx === minIdx ? " ★" : ""}</td>
-                    <td>${md.toFixed(1)}</td><td>${co}</td>
+                    <td>${md.toFixed(1)}</td>
+                    <td>${co}</td>
                   </tr>`;
               }
             }
