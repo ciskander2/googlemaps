@@ -6,13 +6,57 @@
   <meta name="viewport" content="initial-scale=1.0, width=device-width"/>
   <style>
     #map { height: 60vh; width: 100%; margin-bottom: 10px; }
-    .controls { margin-bottom: 10px; }
-    .controls input { width: 200px; margin-right: 6px; }
-    .controls button { margin-right: 6px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #888; padding: 6px; text-align: center; word-break: break-word; white-space: normal; }
-    th { background: #f0f0f0; }
-    .legend span { margin-right: 15px; }
+
+    .controls {
+      margin-bottom: 10px;
+    }
+
+    .controls input {
+      width: 200px;
+      margin-right: 6px;
+    }
+
+    .controls button {
+      margin-right: 6px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th, td {
+      border: 1px solid #888;
+      padding: 6px;
+      text-align: center;
+      word-break: break-word;
+      white-space: normal;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 0;
+      font-size: 16px;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend .line {
+      display: inline-block;
+      width: 20px;
+      height: 4px;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
@@ -23,12 +67,15 @@
     <input id="destination" placeholder="Destination (e.g. Los Angeles, CA)"/>
     <button id="go">Plot Route</button>
   </div>
+
+  <!-- ✅ Improved Legend -->
   <div class="legend">
     <strong>Legend:</strong>
-    <span style="color: #FF0000;">Plane</span> | 
-    <span style="color: #0000FF;">Sea</span> | 
-    <span style="color: #008000;">Drive</span>
+    <span><span class="line" style="background-color: #FF0000;"></span>Plane</span>
+    <span><span class="line" style="background-color: #0000FF;"></span>Sea</span>
+    <span><span class="line" style="background-color: #008000;"></span>Drive</span>
   </div>
+
   <div id="map"></div>
   <div id="summary"></div>
 
@@ -207,6 +254,7 @@
         div.innerHTML = `<input class="waypoint" placeholder="Waypoint"/> <button onclick="this.parentNode.remove()">✕</button>`;
         document.getElementById("waypoints").appendChild(div);
       });
+
       document.getElementById("go").addEventListener("click", processRoute);
 
       initMap();
