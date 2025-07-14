@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Smart Route Planner with Ports</title>
+  <title>Smart Multi-Option Route Planner</title>
   <meta charset="utf-8"/>
   <meta name="viewport" content="initial-scale=1.0, width=device-width"/>
   <style>
@@ -34,11 +34,11 @@
 
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
   <script>
-    // Sample port database (add more for production)
     const PORTS = [
       { name: "Port of Le Havre", lat: 49.4949, lng: 0.1079 },
       { name: "Port of New York", lat: 40.7128, lng: -74.0060 },
-      { name: "Port of Houston", lat: 29.7560, lng: -95.3678 }
+      { name: "Port of Houston", lat: 29.7560, lng: -95.3678 },
+      { name: "Port of Los Angeles", lat: 33.7361, lng: -118.2519 }
     ];
 
     const EMISSION = {
@@ -62,6 +62,12 @@
         if (d < best) { best = d; nearest = p; }
       });
       return nearest;
+    }
+
+    function detectContinent(lat, lng) {
+      if (lng >= -170 && lng <= -30 && lat > 5 && lat < 80) return "NorthAmerica";
+      if (lng >= -10 && lng <= 60 && lat > 30 && lat < 75) return "Europe";
+      return "Other";
     }
 
     window.onload = () => {
@@ -122,38 +128,48 @@
           }));
         }, Promise.resolve()).then(() => {
           summary.innerHTML = `<h3>Route Summary</h3><table><tr><th>From</th><th>To</th><th>Mode</th><th>Dist (km)</th><th>Time (hr)</th><th>CO₂ (kg)</th></tr>`;
-          let promises = [];
 
           coords.forEach((start, i) => {
             const end = coords[i+1];
             if (!end) return;
 
             const d = calculateDistance(start.lat, start.lng, end.lat, end.lng);
-            let segments = [];
+            const continentStart = detectContinent(start.lat, start.lng);
+            const continentEnd = detectContinent(end.lat, end.lng);
+            let routeVariants = [];
 
-            if (d > 1500) {
+            if (d > 3000 && continentStart !== continentEnd) {
               const portA = findNearestPort(start);
               const portB = findNearestPort(end);
-              segments.push({ m: "Plane", a: start, b: portA });
-              segments.push({ m: "Sea", a: portA, b: portB });
-              segments.push({ m: "Driving", a: portB, b: end });
+              routeVariants.push([
+                { m: "Plane", a: start, b: portA },
+                { m: "Sea",   a: portA, b: portB },
+                { m: "Driving", a: portB, b: end }
+              ]);
             } else {
-              segments.push({ m: d < 500 ? "Driving" : "Plane", a: start, b: end });
+              routeVariants.push([
+                { m: "Plane", a: start, b: end }
+              ]);
+              routeVariants.push([
+                { m: "Driving", a: start, b: end }
+              ]);
             }
 
-            segments.forEach(seg => {
-              const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
-              const sp = EMISSION[seg.m].speed;
-              const tm = (md/sp).toFixed(2);
-              const co = (md*EMISSION[seg.m].factor).toFixed(1);
-              summary.innerHTML += `<tr><td>${seg.a.lat.toFixed(3)},${seg.a.lng.toFixed(3)}</td><td>${seg.b.lat.toFixed(3)},${seg.b.lng.toFixed(3)}</td><td>${seg.m}</td><td>${md.toFixed(1)}</td><td>${tm}</td><td>${co}</td></tr>`;
-              
-              const color = seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
-              if (seg.m === "Driving") {
-                routeDriving(seg.a, seg.b, color);
-              } else {
-                renderSegment([seg.a, seg.b], color);
-              }
+            routeVariants.forEach((segments, routeIdx) => {
+              segments.forEach(seg => {
+                const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
+                const sp = EMISSION[seg.m].speed;
+                const tm = (md/sp).toFixed(2);
+                const co = (md*EMISSION[seg.m].factor).toFixed(1);
+                summary.innerHTML += `<tr><td>${seg.a.lat.toFixed(3)},${seg.a.lng.toFixed(3)}</td><td>${seg.b.lat.toFixed(3)},${seg.b.lng.toFixed(3)}</td><td>${seg.m} (Option ${routeIdx + 1})</td><td>${md.toFixed(1)}</td><td>${tm}</td><td>${co}</td></tr>`;
+
+                const color = seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
+                if (seg.m === "Driving") {
+                  routeDriving(seg.a, seg.b, color);
+                } else {
+                  renderSegment([seg.a, seg.b], color);
+                }
+              });
             });
           });
 
