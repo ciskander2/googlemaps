@@ -76,6 +76,11 @@
       if (lng >= -10 && lng <= 60 && lat > 30 && lat < 75) return "Europe";
       return "Other";
     }
+    const greenestIdx = highlightGreenestRoute(routeVariants);
+
+  const greenestIdx = totals.indexOf(Math.min(...totals));
+  return greenestIdx;
+}
 
     window.onload = () => {
       let map, directionsService, mapRenderers = [];
@@ -191,7 +196,9 @@
                     <td>${co}</td>
                   </tr>`;
 
-                const color = seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
+                const isGreen = (optionIdx === greenestIdx);
+                const color = isGreen ? "gold" : seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
+                const weight = isGreen ? 5 : 3;
                 if (seg.m === "Driving") {
                   routeDriving(seg.a, seg.b, color);
                 } else {
