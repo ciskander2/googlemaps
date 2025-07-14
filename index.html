@@ -27,6 +27,7 @@
     table {
       border-collapse: collapse;
       width: 100%;
+      font-size: 14px; /* 👈 smaller font */
     }
 
     th, td {
@@ -35,15 +36,15 @@
       text-align: center;
       word-break: break-word;
       vertical-align: middle;
-    }
-
-    th {
-      background: #f0f0f0;
+      white-space: normal;
     }
 
     td {
       max-width: 250px;
-      white-space: normal;
+    }
+
+    th {
+      background: #f0f0f0;
     }
 
     .legend {
@@ -104,7 +105,7 @@
 
     const EMISSION = {
       Plane: { speed: 800, factor: 0.897 },
-      Sea: { speed: 35, factor: 0.025 },
+      Sea:   { speed: 35,  factor: 0.025 },
       Driving: { speed: 80, factor: 0.432 }
     };
 
@@ -113,8 +114,8 @@
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat / 2) ** 2 +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) ** 2;
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) ** 2;
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
@@ -122,10 +123,7 @@
       let nearest = PORTS[0], best = Infinity;
       PORTS.forEach(p => {
         const d = calculateDistance(coord.lat, coord.lng, p.lat, p.lng);
-        if (d < best) {
-          best = d;
-          nearest = p;
-        }
+        if (d < best) { best = d; nearest = p; }
       });
       return nearest;
     }
