@@ -35,18 +35,17 @@
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
   <script>
     const PORTS = [
-      { name: "Port of Los Angeles, USA", country: "US", lat: 33.7361, lng: -118.2519 },
-      { name: "Port of Long Beach, USA", country: "US", lat: 33.7542, lng: -118.2167 },
-      { name: "Port of New York & New Jersey, USA", country: "US", lat: 40.6681, lng: -74.0451 },
-      { name: "Port of Savannah, USA", country: "US", lat: 32.0835, lng: -81.0998 },
-      { name: "Port of Houston, USA", country: "US", lat: 29.7360, lng: -95.2589 },
-      { name: "Port of Rotterdam, NL", country: "NL", lat: 51.9456, lng: 4.1221 },
-      { name: "Port of Antwerp, BE", country: "BE", lat: 51.2600, lng: 4.3550 },
-      { name: "Port of Hamburg, DE", country: "DE", lat: 53.5461, lng: 9.9661 },
-      { name: "Port of Le Havre, FR", country: "FR", lat: 49.4949, lng: 0.1079 },
-      { name: "Port of Shanghai, CN", country: "CN", lat: 31.2304, lng: 121.4737 },
-      { name: "Port of Singapore, SG", country: "SG", lat: 1.2644, lng: 103.8200 }
-      // Add more as needed
+      { name: "Port of Le Havre, FR", lat: 49.4949, lng: 0.1079 },
+      { name: "Port of Rotterdam, NL", lat: 51.9456, lng: 4.1221 },
+      { name: "Port of Antwerp, BE", lat: 51.2600, lng: 4.3550 },
+      { name: "Port of Hamburg, DE", lat: 53.5461, lng: 9.9661 },
+      { name: "Port of Los Angeles, USA", lat: 33.7361, lng: -118.2519 },
+      { name: "Port of Long Beach, USA", lat: 33.7542, lng: -118.2167 },
+      { name: "Port of New York, USA", lat: 40.7128, lng: -74.0060 },
+      { name: "Port of Savannah, USA", lat: 32.0835, lng: -81.0998 },
+      { name: "Port of Houston, USA", lat: 29.7360, lng: -95.2589 },
+      { name: "Port of Shanghai, CN", lat: 31.2304, lng: 121.4737 },
+      { name: "Port of Singapore, SG", lat: 1.2644, lng: 103.8200 }
     ];
 
     const EMISSION = {
@@ -117,23 +116,6 @@
         mapRenderers.push(renderer);
       }
 
-      async function reverseGeocode(lat, lng) {
-        const geocoder = new google.maps.Geocoder();
-        return new Promise((resolve) => {
-          geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-            if (status === "OK" && results[0]) {
-              const city = results[0].address_components.find(c => 
-                c.types.includes("locality") || c.types.includes("postal_town") || c.types.includes("administrative_area_level_1")
-              );
-              const country = results[0].address_components.find(c => c.types.includes("country"));
-              resolve(`${city?.long_name || "Unknown"}, ${country?.short_name || ""}`);
-            } else {
-              resolve(`${lat.toFixed(3)}, ${lng.toFixed(3)}`);
-            }
-          });
-        });
-      }
-
       function processRoute() {
         clearRoutes();
         const pts = [
@@ -174,22 +156,24 @@
             const continentEnd = detectContinent(end.lat, end.lng);
             let routeVariants = [];
 
+            const portA = findNearestPort(start);
+            const portB = findNearestPort(end);
+
             if (d > 3000 && continentStart !== continentEnd) {
-              const portA = findNearestPort(start);
-              const portB = findNearestPort(end);
-              routeVariants.push([
-                { m: "Plane", a: start, b: portA },
-                { m: "Sea",   a: portA, b: portB },
-                { m: "Driving", a: portB, b: end }
-              ]);
-            } else {
-              routeVariants.push([
-                { m: "Plane", a: start, b: end }
-              ]);
-              routeVariants.push([
-                { m: "Driving", a: start, b: end }
-              ]);
+              const driveToPort = calculateDistance(start.lat, start.lng, portA.lat, portA.lng);
+              const driveFromPort = calculateDistance(end.lat, end.lng, portB.lat, portB.lng);
+
+              const segments = [];
+              if (driveToPort > 20) segments.push({ m: "Driving", a: start, b: portA });
+              segments.push({ m: "Sea", a: portA, b: portB });
+              if (driveFromPort > 20) segments.push({ m: "Driving", a: portB, b: end });
+
+              routeVariants.push(segments);
             }
+
+            // Always add plane-only and drive-only as additional options
+            routeVariants.push([{ m: "Plane", a: start, b: end }]);
+            routeVariants.push([{ m: "Driving", a: start, b: end }]);
 
             for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
               for (let seg of routeVariants[optionIdx]) {
