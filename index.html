@@ -34,19 +34,40 @@
 
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
   <script>
-    const PORTS = [
-      { name: "Port of Le Havre, FR", lat: 49.4949, lng: 0.1079 },
-      { name: "Port of Rotterdam, NL", lat: 51.9456, lng: 4.1221 },
-      { name: "Port of Antwerp, BE", lat: 51.2600, lng: 4.3550 },
-      { name: "Port of Hamburg, DE", lat: 53.5461, lng: 9.9661 },
-      { name: "Port of Los Angeles, USA", lat: 33.7361, lng: -118.2519 },
-      { name: "Port of Long Beach, USA", lat: 33.7542, lng: -118.2167 },
-      { name: "Port of New York, USA", lat: 40.7128, lng: -74.0060 },
-      { name: "Port of Savannah, USA", lat: 32.0835, lng: -81.0998 },
-      { name: "Port of Houston, USA", lat: 29.7360, lng: -95.2589 },
-      { name: "Port of Shanghai, CN", lat: 31.2304, lng: 121.4737 },
-      { name: "Port of Singapore, SG", lat: 1.2644, lng: 103.8200 }
-    ];
+  const PORTS = [
+  { name: "Port of Le Havre, FR", lat: 49.4949, lng: 0.1079 },
+  { name: "Port of Rotterdam, NL", lat: 51.9456, lng: 4.1221 },
+  { name: "Port of Antwerp, BE", lat: 51.2600, lng: 4.3550 },
+  { name: "Port of Hamburg, DE", lat: 53.5461, lng: 9.9661 },
+  { name: "Port of Valencia, ES", lat: 39.4667, lng: -0.3750 },
+  { name: "Port of Genoa, IT", lat: 44.4048, lng: 8.9444 },
+  { name: "Port of Piraeus, GR", lat: 37.9400, lng: 23.6290 },
+  { name: "Port of Istanbul, TR", lat: 41.0122, lng: 28.9760 },
+  { name: "Port of Dubai, UAE", lat: 25.2697, lng: 55.3075 },
+
+  { name: "Port of Los Angeles, USA", lat: 33.7361, lng: -118.2519 },
+  { name: "Port of Long Beach, USA", lat: 33.7542, lng: -118.2167 },
+  { name: "Port of New York, USA", lat: 40.7128, lng: -74.0060 },
+  { name: "Port of Savannah, USA", lat: 32.0835, lng: -81.0998 },
+  { name: "Port of Houston, USA", lat: 29.7360, lng: -95.2589 },
+  { name: "Port of Seattle, USA", lat: 47.6062, lng: -122.3321 },
+  { name: "Port of Miami, USA", lat: 25.7781, lng: -80.1794 },
+
+  { name: "Port of Shanghai, CN", lat: 31.2304, lng: 121.4737 },
+  { name: "Port of Shenzhen, CN", lat: 22.5431, lng: 114.0579 },
+  { name: "Port of Ningbo-Zhoushan, CN", lat: 29.8683, lng: 121.5440 },
+  { name: "Port of Busan, KR", lat: 35.1796, lng: 129.0756 },
+  { name: "Port of Tokyo, JP", lat: 35.6762, lng: 139.6503 },
+
+  { name: "Port of Singapore, SG", lat: 1.2644, lng: 103.8200 },
+  { name: "Port of Klang, MY", lat: 3.0033, lng: 101.4000 },
+  { name: "Port of Jakarta, ID", lat: -6.1275, lng: 106.9047 },
+  { name: "Port of Melbourne, AU", lat: -37.8136, lng: 144.9631 },
+
+  { name: "Port of Durban, ZA", lat: -29.8587, lng: 31.0218 },
+  { name: "Port of Mombasa, KE", lat: -4.0435, lng: 39.6682 }
+];
+
 
     const EMISSION = {
       Plane: { speed: 800, factor: 0.897 },
