@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Smart Multi-Option Route Planner</title>
+  <title>Dynamic Route Optimizer Map</title>
   <meta charset="utf-8"/>
   <meta name="viewport" content="initial-scale=1.0, width=device-width"/>
   <style>
@@ -10,7 +10,7 @@
     .controls input { width: 200px; margin-right: 6px; }
     .controls button { margin-right: 6px; }
     table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #888; padding: 6px; text-align: center; white-space: nowrap; }
+    th, td { border: 1px solid #888; padding: 6px; text-align: center; word-break: break-word; white-space: normal; }
     th { background: #f0f0f0; }
     .legend span { margin-right: 15px; }
   </style>
@@ -32,7 +32,7 @@
   <div id="map"></div>
   <div id="summary"></div>
 
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBcjGLzmaGgh_cgwoS_2eGas0LD9oQQdDw&libraries=places"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
   <script>
     const PORTS = [
       { name: "Port of Le Havre, FR", lat: 49.4949, lng: 0.1079 },
@@ -149,6 +149,8 @@
                 <th style="min-width: 90px;">Dist (km)</th>
                 <th style="min-width: 90px;">CO₂ (kg)</th>
               </tr></thead><tbody>`;
+
+          let allOptions = [];
 
           for (let i = 0; i < coords.length - 1; i++) {
             const start = coords[i];
