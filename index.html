@@ -9,11 +9,10 @@
     .controls { margin-bottom: 10px; }
     .controls input { width: 200px; margin-right: 6px; }
     .controls button { margin-right: 6px; }
-    table { border-collapse: collapse; width: 100%; table-layout: auto; }
+    table { border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid #888; padding: 6px; text-align: center; white-space: nowrap; }
     th { background: #f0f0f0; }
     .legend span { margin-right: 15px; }
-    .greenest { background-color: #ffffcc; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -78,22 +77,6 @@
       return "Other";
     }
 
-    function highlightGreenestCO2() {
-      const rows = [...document.querySelectorAll("#summary tbody tr")];
-      let minCO2 = Infinity, bestRow = null;
-      rows.forEach(row => {
-        const val = parseFloat(row.cells[5].innerText);
-        if (!isNaN(val) && val < minCO2) {
-          minCO2 = val;
-          bestRow = row;
-        }
-      });
-      if (bestRow) {
-        bestRow.classList.add("greenest");
-        bestRow.cells[2].innerHTML += " ★";
-      }
-    }
-
     window.onload = () => {
       let map, directionsService, mapRenderers = [];
       const summary = document.getElementById("summary");
@@ -146,7 +129,7 @@
         pts.reduce((p, loc) => {
           return p.then(() => new Promise((resolve, reject) => {
             geo.geocode({ address: loc }, (res, st) => {
-              if (st === "OK") {
+              if (st === "OK") {}
                 coords.push(res[0].geometry.location.toJSON());
                 places.push(res[0].formatted_address);
                 resolve();
@@ -160,8 +143,14 @@
             <h3>Route Summary</h3>
             <table>
               <thead><tr>
-                <th>From</th><th>To</th><th>Mode</th><th>Dist (km)</th><th>CO₂ (kg)</th>
+                <th style="min-width: 150px;">From</th>
+                <th style="min-width: 150px;">To</th>
+                <th style="min-width: 140px;">Mode</th>
+                <th style="min-width: 90px;">Dist (km)</th>
+                <th style="min-width: 90px;">CO₂ (kg)</th>
               </tr></thead><tbody>`;
+
+          let allOptions = [];
 
           for (let i = 0; i < coords.length - 1; i++) {
             const start = coords[i];
@@ -188,34 +177,48 @@
               routeVariants.push(segments);
             }
 
+            // Always add plane-only and drive-only as additional options
             routeVariants.push([{ m: "Plane", a: start, b: end }]);
             routeVariants.push([{ m: "Driving", a: start, b: end }]);
+
+            let co2PerRoute = [];
+
+            for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
+              let totalCO2 = 0;
+              for (let seg of routeVariants[optionIdx]) {
+                const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
+                const co = md * EMISSION[seg.m].factor;
+                totalCO2 += co;
+              }
+              co2PerRoute.push(totalCO2);
+            }
+
+            const minIdx = co2PerRoute.indexOf(Math.min(...co2PerRoute));
 
             for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
               for (let seg of routeVariants[optionIdx]) {
                 const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
                 const co = (md * EMISSION[seg.m].factor).toFixed(1);
-                summary.innerHTML += `
-                  <tr>
-                    <td>${fromCity}</td>
-                    <td>${toCity}</td>
-                    <td>${seg.m} (Option ${optionIdx + 1})</td>
-                    <td>${md.toFixed(1)}</td>
-                    <td>${co}</td>
-                  </tr>`;
-
                 const color = seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
                 if (seg.m === "Driving") {
                   routeDriving(seg.a, seg.b, color);
                 } else {
                   renderSegment([seg.a, seg.b], color);
                 }
+
+                summary.innerHTML += `
+                  <tr${optionIdx === minIdx ? " style='background-color:#fff8dc;'" : ""}>
+                    <td>${fromCity}</td>
+                    <td>${toCity}</td>
+                    <td>${seg.m} (Option ${optionIdx + 1})${optionIdx === minIdx ? " ★" : ""}</td>
+                    <td>${md.toFixed(1)}</td>
+                    <td>${co}</td>
+                  </tr>`;
               }
             }
           }
 
           summary.innerHTML += "</tbody></table>";
-          highlightGreenestCO2();
         });
       }
 
