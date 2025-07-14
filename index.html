@@ -68,7 +68,6 @@
     <button id="go">Plot Route</button>
   </div>
 
-  <!-- ✅ Improved Legend -->
   <div class="legend">
     <strong>Legend:</strong>
     <span><span class="line" style="background-color: #FF0000;"></span>Plane</span>
@@ -215,33 +214,46 @@
             routeVariants.push([{ m: "Plane", a: start, b: end }]);
             routeVariants.push([{ m: "Driving", a: start, b: end }]);
 
-            let co2PerRoute = [];
+            let co2PerRoute = [], distPerRoute = [];
 
             for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
-              let totalCO2 = 0;
+              let totalCO2 = 0, totalDist = 0;
               for (let seg of routeVariants[optionIdx]) {
                 const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
-                const co = md * EMISSION[seg.m].factor;
-                totalCO2 += co;
+                totalDist += md;
+                totalCO2 += md * EMISSION[seg.m].factor;
               }
               co2PerRoute.push(totalCO2);
+              distPerRoute.push(totalDist);
             }
 
             const minIdx = co2PerRoute.indexOf(Math.min(...co2PerRoute));
 
             for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
-              for (let seg of routeVariants[optionIdx]) {
-                const md = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
-                const co = (md * EMISSION[seg.m].factor).toFixed(1);
+              const segments = routeVariants[optionIdx];
+              const modeStr = segments.map(s => {
+                const emoji = s.m === "Plane" ? "✈️" : s.m === "Sea" ? "🚢" : "🚗";
+                return `${emoji} ${s.m}`;
+              }).join(" → ");
+
+              for (let seg of segments) {
                 const color = seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
                 if (seg.m === "Driving") {
                   routeDriving(seg.a, seg.b, color);
                 } else {
                   renderSegment([seg.a, seg.b], color);
                 }
-
-                summary.innerHTML += `<tr${optionIdx === minIdx ? " style='background-color:#fff8dc;'" : ""}><td>${fromCity}</td><td>${toCity}</td><td>${seg.m} (Option ${optionIdx + 1})${optionIdx === minIdx ? " ★" : ""}</td><td>${md.toFixed(1)}</td><td>${co}</td></tr>`;
               }
+
+              summary.innerHTML += `
+                <tr${optionIdx === minIdx ? " style='background-color:#fff8dc;'" : ""}>
+                  <td>${fromCity}</td>
+                  <td>${toCity}</td>
+                  <td>${modeStr} (Option ${optionIdx + 1})${optionIdx === minIdx ? " ★" : ""}</td>
+                  <td>${distPerRoute[optionIdx].toFixed(1)}</td>
+                  <td>${co2PerRoute[optionIdx].toFixed(1)}</td>
+                </tr>
+              `;
             }
           }
 
