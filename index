@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dynamic Route Optimizer Map</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1.0, width=device-width"/>
+  <style>
+    #map {
+      height: 60vh;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .controls {
+      margin-bottom: 10px;
+    }
+
+    .controls input {
+      width: 200px;
+      margin-right: 6px;
+    }
+
+    .controls button {
+      margin-right: 6px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px; /* 👈 smaller font */
+    }
+
+    th, td {
+      border: 1px solid #888;
+      padding: 6px;
+      text-align: center;
+      word-break: break-word;
+      vertical-align: middle;
+      white-space: normal;
+    }
+
+    td {
+      max-width: 250px;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 0;
+      font-size: 16px;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend .line {
+      display: inline-block;
+      width: 20px;
+      height: 4px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <input id="origin" placeholder="Origin (e.g. Paris, FR)"/>
+    <div id="waypoints"></div>
+    <button id="add-stop">+ Add Stop</button>
+    <input id="destination" placeholder="Destination (e.g. Los Angeles, CA)"/>
+    <button id="go">Plot Route</button>
+  </div>
+
+  <div class="legend">
+    <strong>Legend:</strong>
+    <span><span class="line" style="background-color: #FF0000;"></span>Plane</span>
+    <span><span class="line" style="background-color: #0000FF;"></span>Sea</span>
+    <span><span class="line" style="background-color: #008000;"></span>Drive</span>
+  </div>
+
+  <div id="map"></div>
+  <div id="summary"></div>
+
+  <script src="https://maps.googleapis.com/maps/api/js?key='insertkeyhere'&libraries=places"></script>
+  <script>
+// Sorry, but I had to remove the key because in case you guys end up going super far with this, I may get charged on my credit card if the Google API gets called too many times. Try to ask James, Colin, IT,etc. if they have Google API keys. I'm sure they do.
+    const PORTS = [
+      { name: "Port of Le Havre, FR", lat: 49.4949, lng: 0.1079 },
+      { name: "Port of Rotterdam, NL", lat: 51.9456, lng: 4.1221 },
+      { name: "Port of Antwerp, BE", lat: 51.2600, lng: 4.3550 },
+      { name: "Port of Hamburg, DE", lat: 53.5461, lng: 9.9661 },
+      { name: "Port of Los Angeles, USA", lat: 33.7361, lng: -118.2519 },
+      { name: "Port of Long Beach, USA", lat: 33.7542, lng: -118.2167 },
+      { name: "Port of New York, USA", lat: 40.7128, lng: -74.0060 },
+      { name: "Port of Savannah, USA", lat: 32.0835, lng: -81.0998 },
+      { name: "Port of Houston, USA", lat: 29.7360, lng: -95.2589 },
+      { name: "Port of Singapore, SG", lat: 1.2644, lng: 103.8200 }
+    ];
+
+    const EMISSION = {
+      Plane: { speed: 800, factor: 0.897 },
+      Sea:   { speed: 35,  factor: 0.025 },
+      Driving: { speed: 80, factor: 0.432 }
+    };
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function findNearestPort(coord) {
+      let nearest = PORTS[0], best = Infinity;
+      PORTS.forEach(p => {
+        const d = calculateDistance(coord.lat, coord.lng, p.lat, p.lng);
+        if (d < best) { best = d; nearest = p; }
+      });
+      return nearest;
+    }
+
+    function detectContinent(lat, lng) {
+      if (lng >= -170 && lng <= -30 && lat > 5 && lat < 80) return "NorthAmerica";
+      if (lng >= -10 && lng <= 60 && lat > 30 && lat < 75) return "Europe";
+      return "Other";
+    }
+
+    window.onload = () => {
+      let map, directionsService, mapRenderers = [];
+      const summary = document.getElementById("summary");
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+          zoom: 4, center: { lat: 39.5, lng: -98 }
+        });
+        directionsService = new google.maps.DirectionsService();
+      }
+
+      function clearRoutes() {
+        mapRenderers.forEach(r => r.setMap(null));
+        mapRenderers = [];
+        summary.innerHTML = "";
+      }
+
+      function renderSegment(pathCoords, color) {
+        const line = new google.maps.Polyline({
+          path: pathCoords, geodesic: true, strokeColor: color,
+          strokeOpacity: 1.0, strokeWeight: 3
+        });
+        line.setMap(map);
+        mapRenderers.push(line);
+      }
+
+      function routeDriving(a, b, col) {
+        const renderer = new google.maps.DirectionsRenderer({
+          suppressMarkers: true, polylineOptions: { strokeColor: col }
+        });
+        renderer.setMap(map);
+        directionsService.route({
+          origin: a, destination: b, travelMode: "DRIVING"
+        }, (res, status) => {
+          if (status === "OK") renderer.setDirections(res);
+        });
+        mapRenderers.push(renderer);
+      }
+
+      function processRoute() {
+        clearRoutes();
+        const pts = [
+          document.getElementById("origin").value,
+          ...[...document.querySelectorAll(".waypoint")].map(i => i.value),
+          document.getElementById("destination").value
+        ];
+        const geo = new google.maps.Geocoder();
+        let coords = [], places = [];
+
+        pts.reduce((p, loc) => {
+          return p.then(() => new Promise((resolve, reject) => {
+            geo.geocode({ address: loc }, (res, st) => {
+              if (st === "OK") {
+                coords.push(res[0].geometry.location.toJSON());
+                places.push(res[0].formatted_address);
+                resolve();
+              } else {
+                alert(`Failed geocode: ${loc}`); reject();
+              }
+            });
+          }));
+        }, Promise.resolve()).then(() => {
+          summary.innerHTML = `<h3>Route Summary</h3><table><thead><tr><th>From</th><th>To</th><th>Mode</th><th>Dist (km)</th><th>CO₂ (kg)</th></tr></thead><tbody>`;
+
+          for (let i = 0; i < coords.length - 1; i++) {
+            const start = coords[i];
+            const end = coords[i + 1];
+            const fromCity = places[i].split(",")[0].trim();
+            const toCity = places[i + 1].split(",")[0].trim();
+            const d = calculateDistance(start.lat, start.lng, end.lat, end.lng);
+            const continentStart = detectContinent(start.lat, start.lng);
+            const continentEnd = detectContinent(end.lat, end.lng);
+            let routeVariants = [];
+
+            const portA = findNearestPort(start);
+            const portB = findNearestPort(end);
+
+            if (d > 3000 && continentStart !== continentEnd) {
+              const driveToPort = calculateDistance(start.lat, start.lng, portA.lat, portA.lng);
+              const driveFromPort = calculateDistance(end.lat, end.lng, portB.lat, portB.lng);
+
+              const segments = [];
+              if (driveToPort > 20) segments.push({ m: "Driving", a: start, b: portA });
+              segments.push({ m: "Sea", a: portA, b: portB });
+              if (driveFromPort > 20) segments.push({ m: "Driving", a: portB, b: end });
+
+              routeVariants.push(segments);
+            }
+
+            routeVariants.push([{ m: "Plane", a: start, b: end }]);
+            routeVariants.push([{ m: "Driving", a: start, b: end }]);
+
+            let co2PerRoute = [], distPerRoute = [], allModes = [], allSegments = [];
+
+            for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
+              const segments = routeVariants[optionIdx];
+              let totalCO2 = 0, totalDist = 0, modeList = [];
+
+              for (let seg of segments) {
+                const dist = calculateDistance(seg.a.lat, seg.a.lng, seg.b.lat, seg.b.lng);
+                totalDist += dist;
+                totalCO2 += dist * EMISSION[seg.m].factor;
+                modeList.push(seg.m);
+              }
+
+              co2PerRoute.push(totalCO2);
+              distPerRoute.push(totalDist);
+              allModes.push(modeList);
+              allSegments.push(segments);
+            }
+
+            const minIdx = co2PerRoute.indexOf(Math.min(...co2PerRoute));
+
+            for (let optionIdx = 0; optionIdx < routeVariants.length; optionIdx++) {
+              const segments = allSegments[optionIdx];
+              const modeStr = allModes[optionIdx].map(m => {
+                const emoji = m === "Plane" ? "✈️" : m === "Sea" ? "🚢" : "🚗";
+                return `${emoji} ${m}`;
+              }).join(" → ");
+
+              segments.forEach(seg => {
+                const color = seg.m === "Plane" ? "#FF0000" : seg.m === "Sea" ? "#0000FF" : "#008000";
+                if (seg.m === "Driving") {
+                  routeDriving(seg.a, seg.b, color);
+                } else {
+                  renderSegment([seg.a, seg.b], color);
+                }
+              });
+
+              const highlight = optionIdx === minIdx ? " style='background-color:#fff8dc;'" : "";
+
+              summary.innerHTML += `
+                <tr${highlight}>
+                  <td>${fromCity}</td>
+                  <td>${toCity}</td>
+                  <td style="white-space: normal;">${modeStr} (Option ${optionIdx + 1})${optionIdx === minIdx ? " ★" : ""}</td>
+                  <td>${distPerRoute[optionIdx].toFixed(1)}</td>
+                  <td>${co2PerRoute[optionIdx].toFixed(1)}</td>
+                </tr>
+              `;
+            }
+          }
+
+          summary.innerHTML += "</tbody></table>";
+        });
+      }
+
+      document.getElementById("add-stop").addEventListener("click", () => {
+        const div = document.createElement("div");
+        div.innerHTML = `<input class="waypoint" placeholder="Waypoint"/> <button onclick="this.parentNode.remove()">✕</button>`;
+        document.getElementById("waypoints").appendChild(div);
+      });
+
+      document.getElementById("go").addEventListener("click", processRoute);
+
+      initMap();
+    };
+  </script>
+</body>
+</html>
